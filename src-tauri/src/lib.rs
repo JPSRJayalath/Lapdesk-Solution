@@ -11,6 +11,7 @@ fn greet(name: &str) -> String {
 #[derive(Deserialize)]
 struct NewItem {
     name: String,
+    codename: Option<String>,
     price: f64,
     stock: i64,
 }
@@ -19,6 +20,7 @@ struct NewItem {
 struct Item {
     id: i64,
     name: String,
+    codename: Option<String>,
     price: f64,
     stock: i64,
 }
@@ -48,8 +50,8 @@ fn add_item(app: tauri::AppHandle, item: NewItem) -> Result<(), String> {
 
     connection
         .execute(
-            "INSERT INTO items (name, price, stock) VALUES (?1, ?2, ?3)",
-            params![item.name, item.price, item.stock],
+            "INSERT INTO items (name, codename, price, stock) VALUES (?1, ?2, ?3, ?4)",
+            params![item.name, item.codename, item.price, item.stock],
         )
         .map_err(|error| {
             println!("INSERT ERROR: {}", error);
@@ -94,7 +96,7 @@ fn get_items(app: tauri::AppHandle) -> Result<Vec<Item>, String> {
         .map_err(|error| error.to_string())?;
 
     let mut statement = connection
-        .prepare("SELECT id, name, price, stock FROM items ORDER BY id")
+        .prepare("SELECT id, name, codename, price, stock FROM items ORDER BY id")
         .map_err(|error| error.to_string())?;
 
     let items = statement
@@ -102,8 +104,9 @@ fn get_items(app: tauri::AppHandle) -> Result<Vec<Item>, String> {
             Ok(Item {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                price: row.get(2)?,
-                stock: row.get(3)?,
+                codename: row.get(2)?,
+                price: row.get(3)?,
+                stock: row.get(4)?,
             })
         })
         .map_err(|error| error.to_string())?
@@ -114,10 +117,34 @@ fn get_items(app: tauri::AppHandle) -> Result<Vec<Item>, String> {
 }
 
 #[tauri::command]
+fn use_item(app: tauri::AppHandle, id: i64) -> Result<(), String> {
+    let database_path = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| error.to_string())?
+        .join("lapdesk.sqlite3");
+
+    let connection = Connection::open(database_path)
+        .map_err(|error| error.to_string())?;
+
+    connection
+        .execute(
+            "UPDATE items
+             SET stock = stock - 1
+             WHERE id = ?1 AND stock > 0",
+            params![id],
+        )
+        .map_err(|error| error.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
 fn update_item(
     app: tauri::AppHandle,
     id: i64,
     name: String,
+    codename: String,
     price: f64,
     stock: i64,
 ) -> Result<(), String> {
@@ -133,9 +160,9 @@ fn update_item(
     connection
         .execute(
             "UPDATE items
-             SET name = ?1, price = ?2, stock = ?3
-             WHERE id = ?4",
-            params![name, price, stock, id],
+             SET name = ?1, codename = ?2, price = ?3, stock = ?4
+             WHERE id = ?5",
+            params![name, codename, price, stock, id],
         )
         .map_err(|error| error.to_string())?;
 
@@ -160,6 +187,7 @@ pub fn run() {
                 CREATE TABLE IF NOT EXISTS items (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
+                    codename TEXT,
                     price REAL NOT NULL,
                     stock INTEGER NOT NULL
                 );
@@ -185,6 +213,14 @@ pub fn run() {
             get_items,
             remove_item,
             update_item
+        ])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            add_item,
+            get_items,
+            remove_item,
+            update_item,
+            use_item
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tauri application");

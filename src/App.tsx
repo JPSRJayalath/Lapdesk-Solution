@@ -1,20 +1,35 @@
 import { useEffect, useState } from "react";
 import { type FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useNavigation } from "./hooks/useAddItems";
 import "./App.css";
 
 type Item = {
   id: number;
   name: string;
+  codename: string;
   price: number;
   stock: number;
 };
 
+function useNavigation() {
+  const [activeContainer, setActiveContainer] = useState(1);
+
+  const showContainer = (container: number) => {
+    setActiveContainer(container);
+  };
+
+  return {
+    activeContainer,
+    showContainer,
+  };
+}
+
 function App() {
   const { activeContainer, showContainer } = useNavigation();
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   const [name, setName] = useState("");
+  const [codename, setCodeName] = useState("");
   const [stock, setStock] = useState("");
   const [price, setPrice] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,6 +42,7 @@ function App() {
 
   const [selectedItemId, setSelectedItemId] = useState("");
   const [updateName, setUpdateName] = useState("");
+  const [updateCodeName, setUpdateCodeName] = useState("");
   const [updateStock, setUpdateStock] = useState("");
   const [updatePrice, setUpdatePrice] = useState("");
   
@@ -64,6 +80,18 @@ function App() {
     }
   }, [items]);
 
+  const handleUseItem = async (id: number) => {
+    try {
+      await invoke("use_item", {
+        id,
+      });
+
+      await fetchItems();
+    } catch (error) {
+      console.error("USE ITEM FAILED:", error);
+    }
+  };
+
   const handleItemSelect = (id: string) => {
     setSelectedItemId(id);
 
@@ -73,12 +101,14 @@ function App() {
 
     if (!selectedItem) {
       setUpdateName("");
+      setUpdateCodeName("");
       setUpdateStock("");
       setUpdatePrice("");
       return;
     }
 
     setUpdateName(selectedItem.name);
+    setUpdateCodeName(selectedItem.codename ?? "");
     setUpdateStock(String(selectedItem.stock));
     setUpdatePrice(String(selectedItem.price));
   };
@@ -90,6 +120,7 @@ function App() {
 
     const item = {
       name: name,
+      codename: codename,
       price: Number(price),
       stock: Number(stock),
     };
@@ -104,6 +135,7 @@ function App() {
       console.log("ITEM ADDED SUCCESSFULLY");
 
       setName("");
+      setCodeName("");
       setStock("");
       setPrice("");
 
@@ -168,13 +200,25 @@ function App() {
                         }`}
                         onClick={() => setSelectedItem(item)}
                       >
-                        <span>{item.name}</span>
-
-                        {item.stock <= 10 && (
-                          <div className="low-stock">
-                            <span>Low Stock</span>
-                          </div>
-                        )}
+                        <span>{item.name} | {item.codename}</span>
+                        <div className="tricks">
+                          {item.stock <= 5 && (
+                            <div className="low-stock">
+                              <span>Low Stock</span>
+                            </div>
+                          )}
+                          {item && item.stock > 0 && (
+                            <div className="used">
+                              <button
+                                type="button"
+                                className="used-btn"
+                                onClick={() => handleUseItem(item.id)}
+                              >
+                                Used
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </button>
                     ))
                   ) : (
@@ -197,9 +241,12 @@ function App() {
                 <div className="item-name">
                   <h2>Name: </h2><span>{selectedItem?.name ?? "N/A"}</span>
                 </div>
+                <div className="item-codename">
+                  <h2>CodeName: </h2><span>{selectedItem?.codename ?? "N/A"}</span>
+                </div>
                 <div className="availability">
                   <h2>Available Stock:</h2>
-                  <span className={selectedItem && selectedItem.stock <= 10 ? "low-stock-text" : ""}>
+                  <span className={selectedItem && selectedItem.stock <= 5 ? "low-stock-text" : ""}>
                     {selectedItem?.stock ?? "N/A"}
                   </span>
                 </div>
@@ -216,6 +263,9 @@ function App() {
               <h1>Adding Item</h1>
               <div className="form-item-name">
                 <h2>Name: </h2><input type="text" value={name} onChange={(event) => setName(event.target.value)} required/>
+              </div>
+              <div className="form-item-codename">
+                <h2>CodeName: </h2><input type="text" value={codename} onChange={(event) => setCodeName(event.target.value)} />
               </div>
               <div className="form-availability">
                 <h2>Available Stock: </h2><input type="number" name="stock" placeholder="0" step="1" value={stock} onChange={(event) => setStock(event.target.value)} required/>
@@ -253,6 +303,7 @@ function App() {
                 await invoke("update_item", {
                   id: Number(selectedItemId),
                   name: updateName,
+                  codename: updateCodeName,
                   price: Number(updatePrice),
                   stock: Number(updateStock),
                 });
@@ -263,6 +314,7 @@ function App() {
 
                 setSelectedItemId("");
                 setUpdateName("");
+                setUpdateCodeName("");
                 setUpdateStock("");
                 setUpdatePrice("");
 
@@ -302,6 +354,15 @@ function App() {
                   value={updateName}
                   onChange={(event) => setUpdateName(event.target.value)}
                   required
+                />
+              </div>
+              <div className="form-item-codename">
+                <h2>CodeName:</h2>
+
+                <input
+                  type="text"
+                  value={updateCodeName}
+                  onChange={(event) => setUpdateCodeName(event.target.value)}
                 />
               </div>
 
@@ -360,28 +421,14 @@ function App() {
         >
           <form
             className="actions-form"
-            onSubmit={async (event) => {
+            onSubmit={(event) => {
               event.preventDefault();
 
               if (!selectedItemId) {
                 return;
               }
 
-              try {
-                await invoke("remove_item", {
-                  id: Number(selectedItemId),
-                });
-
-                console.log("ITEM REMOVED");
-
-                await fetchItems();
-
-                setSelectedItemId("");
-
-                showContainer(1);
-              } catch (error) {
-                console.error("REMOVE ITEM FAILED:", error);
-              }
+              setShowRemoveConfirm(true);
             }}
           >
             <div className="sub-container-1">
@@ -422,6 +469,52 @@ function App() {
               </button>
             </div>
           </form>
+
+          {showRemoveConfirm && (
+            <div className="remove-confirm">
+              <div className="remove-confirm-box">
+                <h2>Are you sure?</h2>
+
+                <p>
+                  Do you really want to remove this item?
+                </p>
+
+                <div className="confirm-actions">
+                  <button
+                    type="button"
+                    className="confirm-yes"
+                    onClick={async () => {
+                      try {
+                        await invoke("remove_item", {
+                          id: Number(selectedItemId),
+                        });
+
+                        console.log("ITEM REMOVED");
+
+                        await fetchItems();
+
+                        setSelectedItemId("");
+                        setShowRemoveConfirm(false);
+                        showContainer(1);
+                      } catch (error) {
+                        console.error("REMOVE ITEM FAILED:", error);
+                      }
+                    }}
+                  >
+                    Yes, Remove
+                  </button>
+
+                  <button
+                    type="button"
+                    className="confirm-no"
+                    onClick={() => setShowRemoveConfirm(false)}
+                  >
+                    No, Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     </>
