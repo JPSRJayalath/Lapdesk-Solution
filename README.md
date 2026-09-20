@@ -1,3 +1,5 @@
+![License: Proprietary](https://shields.io)
+
 # Lapdesk Solution
 
 A lightweight desktop inventory and stock management application built with **Tauri v2**, **Next.js**, **React**, **TypeScript**, **Rust**, and **SQLite**.
