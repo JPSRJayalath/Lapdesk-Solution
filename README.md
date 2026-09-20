@@ -1,9 +1,6 @@
 # Lapdesk Solution
 
-![License: All Rights Reserved](https://shields.io)
-![Tauri: v2](https://shields.io)
-![Next.js](https://shields.io)
-
+[![Read License](https://shields.io)](./LICENSE)
 
 ![Lapdesk Solution Dashboard](public/screenshot.png)
 
