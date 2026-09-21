@@ -200,7 +200,7 @@ function App() {
                         }`}
                         onClick={() => setSelectedItem(item)}
                       >
-                        <span>{item.name} | {item.codename}</span>
+                        <span>{item.name}</span>
                         <div className="tricks">
                           {item.stock <= 5 && (
                             <div className="low-stock">
@@ -242,7 +242,7 @@ function App() {
                   <h2>Name: </h2><span>{selectedItem?.name ?? "N/A"}</span>
                 </div>
                 <div className="item-codename">
-                  <h2>CodeName: </h2><span>{selectedItem?.codename ?? "N/A"}</span>
+                  <h2>CodeName: </h2><span>{selectedItem?.codename === "" || selectedItem?.codename == null ? "N/A" : selectedItem?.codename}</span>
                 </div>
                 <div className="availability">
                   <h2>Available Stock:</h2>
