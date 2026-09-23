@@ -192,35 +192,47 @@ function App() {
               {items.length > 0 ? (
                 <div className="db-data">
                   {filteredItems.length > 0 ? (
-                    filteredItems.map((item) => (
-                      <button
-                        key={item.id}
-                        className={`item ${
-                          selectedItem?.id === item.id ? "active" : ""
-                        }`}
-                        onClick={() => setSelectedItem(item)}
-                      >
-                        <span>{item.name}</span>
-                        <div className="tricks">
-                          {item.stock <= 5 && (
-                            <div className="low-stock">
-                              <span>Low Stock</span>
-                            </div>
-                          )}
-                          {item && item.stock > 0 && (
-                            <div className="used">
-                              <button
-                                type="button"
-                                className="used-btn"
-                                onClick={() => handleUseItem(item.id)}
-                              >
-                                Used
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    ))
+                    filteredItems
+                      .slice()
+                      .sort((a, b) =>
+                        a.name.localeCompare(b.name, undefined, {
+                          sensitivity: "base",
+                        })
+                      )
+                      .map((item) => (
+                        <button
+                          key={item.id}
+                          className={`item ${
+                            selectedItem?.id === item.id ? "active" : ""
+                          }`}
+                          onClick={() => setSelectedItem(item)}
+                        >
+                          <span>{item.name}</span>
+
+                          <div className="tricks">
+                            {item.stock <= 5 && (
+                              <div className="low-stock">
+                                <span>Low Stock</span>
+                              </div>
+                            )}
+
+                            {item.stock > 0 && (
+                              <div className="used">
+                                <button
+                                  type="button"
+                                  className="used-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUseItem(item.id);
+                                  }}
+                                >
+                                  Used
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))
                   ) : (
                     <div className="no-search">
                       <h2>No Items Found</h2>
